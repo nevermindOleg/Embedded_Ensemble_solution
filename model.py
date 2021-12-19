@@ -51,7 +51,8 @@ class EnsembleSet(nn.Module):
         self.p = p
         self.activation = activation if activation is not None else nn.ReLU()
 
-        self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
+        # self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
+        self.W = torch.ones((n_ensembles, hid_dim, input_dim), device=device, requires_grad=False)
         self.v = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.b = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
