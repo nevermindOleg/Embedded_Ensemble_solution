@@ -54,7 +54,7 @@ class EnsembleSet(nn.Module):
         # self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
         self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
         self.v = torch.ones((n_ensembles, hid_dim), device=device)
-        self.v *= torch.randint(0,1, self.W.shape, device=device, dtype=torch.float32, requires_grad=False) * 2 - 1
+        self.v *= torch.randint(0,1, self.v.shape, device=device, dtype=torch.float32, requires_grad=False) * 2 - 1
         self.b = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
                     (n_ensembles, n_models, output_dim, hid_dim),
