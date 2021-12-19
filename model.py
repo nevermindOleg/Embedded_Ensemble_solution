@@ -24,7 +24,9 @@ class EnsembleSet(nn.Module):
                 n_models: int,
                 n_ensembles: int,
                 p: torch.Tensor,
-                activation: Optional[nn.Module]=None):
+                activation: Optional[nn.Module]=None,
+                device:str = "cpu"
+                ):
         """
         :input_dim:   d, shape of input data
         :hid_dim:     N, shape of hidden layer
@@ -33,7 +35,7 @@ class EnsembleSet(nn.Module):
         :n_ensembles: E, number of ensembles, evaluatied in parallel
         :p:           p, vector of floats of shape E
         :activation:     nn.Module used as activation function. nn.ReLU by default
-
+        :device"         device
         """
 
         assert ((0 <= p) & (p <= 1)).all(), "parameter p should lie between 0 and 1"
@@ -45,13 +47,15 @@ class EnsembleSet(nn.Module):
         self.output_dim = output_dim
         self.n_models = n_models
         self.n_ensembles = n_ensembles
+        self.device = device
         self.p = p
         self.activation = activation if activation is not None else nn.ReLU()
 
-        self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim)))
+        self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
                     (n_ensembles, n_models, output_dim, hid_dim),
-                    requires_grad=False
+                    requires_grad=False,
+                    device=device
                 )
 
 
@@ -183,7 +187,7 @@ def train_loop(model: EnsembleSet, n_epochs: int,
         try:
             gammas = model.choose_gamma(p)
         except NotImplementedError:
-            gammas = torch.ones(model.n_ensembles) / model.n_models
+            gammas = torch.ones(model.n_ensembles, device=model.device) / model.n_models
     
     writer = SummaryWriter()
     writer.add_scalars("p",

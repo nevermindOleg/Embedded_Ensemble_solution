@@ -67,7 +67,7 @@ for _ in tqdm(range(10)):
     x2, x1 = x[:B//3], x[B//3:]
     y2, y1 = y[:B//3], y[B//3:]
 
-    optimizer = SGD(model.parameters(), lr=1e-4)
+    optimizer = SGD(model.parameters(), lr=1e-1)
 
     with torch.autograd.detect_anomaly():
         res = train_loop(model, 20,
