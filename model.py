@@ -52,6 +52,7 @@ class EnsembleSet(nn.Module):
         self.activation = activation if activation is not None else nn.ReLU()
 
         self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
+        self.b = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
                     (n_ensembles, n_models, output_dim, hid_dim),
                     requires_grad=False,
@@ -86,7 +87,7 @@ class EnsembleSet(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.shape[1] == self.input_dim and len(x.shape) == 2, f"x should be Bxd (any x {self.input_dim})"
         # f_a = torch.einsum('emfn,end,bd->bemf', self.U, self.W, x)   # (E,N,d) @ (B,d) = (B,E,N)
-        h = torch.einsum('end,bd->ben', self.W, x)
+        h = torch.einsum('end,bd->ben', self.W, x) + self.b[None, :, :]
         h = self.activation(h/self.hid_dim ** .5)
         f_a = torch.einsum('emfn,ben->bemf', self.U, h)
         f_ens = f_a.mean(2)
