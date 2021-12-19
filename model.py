@@ -15,8 +15,6 @@ class EnsembleSet(nn.Module):
     We need it for massive parallel training
     of several models with different hyperparameters
 
-    Careful with W, it is something bad going on with it...
-
     """
 
     def __init__(self,
@@ -54,9 +52,9 @@ class EnsembleSet(nn.Module):
         self.activation = activation if activation is not None else nn.ReLU()
 
         # self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
-        self.W = torch.ones((n_ensembles, hid_dim, input_dim), device=device, requires_grad=False)
-        self.W *= torch.randint(0,1, self.W.shape, device=device, dtype=torch.float32, requires_grad=False) * 2 - 1
-        self.v = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
+        self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
+        self.v = torch.ones((n_ensembles, hid_dim), device=device)
+        self.v *= torch.randint(0,1, self.W.shape, device=device, dtype=torch.float32, requires_grad=False) * 2 - 1
         self.b = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
                     (n_ensembles, n_models, output_dim, hid_dim),
