@@ -15,6 +15,8 @@ class EnsembleSet(nn.Module):
     We need it for massive parallel training
     of several models with different hyperparameters
 
+    Careful with W, it is something bad going on with it...
+
     """
 
     def __init__(self,
@@ -53,6 +55,7 @@ class EnsembleSet(nn.Module):
 
         # self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim), device=device))
         self.W = torch.ones((n_ensembles, hid_dim, input_dim), device=device, requires_grad=False)
+        self.W *= torch.randint(0,1, self.W.shape, device=device, dtype=torch.float32, requires_grad=False) * 2 - 1
         self.v = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.b = nn.Parameter(torch.randn((n_ensembles, hid_dim), device=device))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
@@ -164,6 +167,34 @@ def generate_data(
     x = torch.rand(n_points, input_dim, )
     a, b = interval
     x = (b - a) * x + a
+    y = func(x) + epsilon * torch.randn(n_points, output_dim, )
+    return x, y
+
+
+def generate_data_uniform(
+        input_dim: int,
+        output_dim: int,
+        func: Callable[[torch.Tensor],torch.Tensor],
+        interval:Tuple[float, float],
+        n_points: int,
+        epsilon: float
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Generates data
+    For 1D input and output prefferably!
+
+    :func: vectorised operation R^d -> R^F to be approximated
+    :interval: tuple(a,b) -- region for sampling x from uniform [a,b]^d
+    :n_points: B, batch_size
+    :epsilon: gaussian noise variance
+
+    :return: (x,y) -- pair of features and targets
+    """
+    # sample x from interval (x of shape Bxd)
+    # do not forget `requires_grad=False`
+    #TODO: data generator function
+    x = torch.linspace(*interval, n_points)[:,None]
+    # x = x[torch.randperm(n_points)]
     y = func(x) + epsilon * torch.randn(n_points, output_dim, )
     return x, y
 
