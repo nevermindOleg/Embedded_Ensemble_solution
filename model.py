@@ -81,7 +81,7 @@ class EnsembleSet(nn.Module):
         """
         B, E, F = f.shape  # consider correct shape of f
         mse = (f - y[:, None, :]) ** 2
-        return mse.sum(dim=[0, 2])
+        return mse.mean(dim=[0, 2])
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -188,7 +188,7 @@ def train_loop(model: EnsembleSet, n_epochs: int,
         try:
             gammas = model.choose_gamma(p)
         except NotImplementedError:
-            gammas = torch.ones(model.n_ensembles, device=model.device) / model.n_models
+            gammas = torch.ones(model.n_ensembles, device=model.device)
     
     writer = SummaryWriter()
     writer.add_scalars("p",
