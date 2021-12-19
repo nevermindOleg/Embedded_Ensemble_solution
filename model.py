@@ -71,13 +71,19 @@ class EnsembleSet(nn.Module):
         Loss function
         :f: predicted value, tensor of shape (E, M, F)
         :y: true value
-
+        
         returns: MSE
         """  #TODO: forward return shape
              #TODO: loss func
              # returns MSE or RMSE or logloss or smth, correct if wrong
-        
-        raise NotImplementedError()
+        Loss = nn.MSELoss()
+        losses = []
+        for i in range(f.size[0]):
+            losses.append(Loss(f[i,:,:], y))
+        loss = Loss(f, y)       # f -
+
+        return loss
+
 
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
