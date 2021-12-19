@@ -4,7 +4,7 @@ from random import randint
 from tqdm import tqdm
 from torchsummary import summary
 from sklearn.model_selection import train_test_split
-from torch.optim import Adam
+from torch.optim import SGD
 
 
 device = 'cpu'
@@ -58,7 +58,7 @@ for _ in tqdm(range(10)):
     F = randint(1, 20)
     M = randint(1, 20)
     E = randint(1, 20)
-    B = randint(5, 200)
+    B = randint(5, 30)
 
     gammas = torch.ones(E)
 
@@ -67,10 +67,10 @@ for _ in tqdm(range(10)):
     x2, x1 = x[:B//3], x[B//3:]
     y2, y1 = y[:B//3], y[B//3:]
 
-    optimizer = Adam(model.parameters())
+    optimizer = SGD(model.parameters(), lr=1e-4)
 
     with torch.autograd.detect_anomaly():
-        res = train_loop(model, 300,
+        res = train_loop(model, 20,
                     optimizer,
                     (x1,y1), (x2,y2),
                 )

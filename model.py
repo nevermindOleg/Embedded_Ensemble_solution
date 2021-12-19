@@ -46,7 +46,7 @@ class EnsembleSet(nn.Module):
         self.n_models = n_models
         self.n_ensembles = n_ensembles
         self.p = p
-        self.activation = activation if activation is None else nn.ReLU()
+        self.activation = activation if activation is not None else nn.ReLU()
 
         self.W = nn.Parameter(torch.randn((n_ensembles, hid_dim, input_dim)))
         self.U = p[:,None,None,None] + (1 - p**2)[:,None,None,None] * torch.randn(
@@ -81,7 +81,10 @@ class EnsembleSet(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         assert x.shape[1] == self.input_dim and len(x.shape) == 2, f"x should be Bxd (any x {self.input_dim})"
-        f_a = torch.einsum('emfn,end,bd->bemf', self.U, self.W, x)   # (E,N,d) @ (B,d) = (B,E,N)
+        # f_a = torch.einsum('emfn,end,bd->bemf', self.U, self.W, x)   # (E,N,d) @ (B,d) = (B,E,N)
+        h = torch.einsum('end,bd->ben', self.W, x)
+        h = self.activation(h/self.hid_dim ** .5)
+        f_a = torch.einsum('emfn,ben->bemf', self.U, h)
         f_ens = f_a.mean(2)
         # above string is 1/M sum_{alpha=1}^{M}
         return f_ens  # (B,E,F)
@@ -180,7 +183,7 @@ def train_loop(model: EnsembleSet, n_epochs: int,
         try:
             gammas = model.choose_gamma(p)
         except NotImplementedError:
-            gammas = torch.ones(model.n_ensembles)
+            gammas = torch.ones(model.n_ensembles) / model.n_models
     
     writer = SummaryWriter()
     writer.add_scalars("p",
