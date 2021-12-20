@@ -147,7 +147,8 @@ def generate_data(
         func: Callable[[torch.Tensor],torch.Tensor],
         interval:Tuple[float, float],
         n_points: int,
-        epsilon: float
+        epsilon: float,
+        random: bool=False
     ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Generates data
@@ -156,45 +157,21 @@ def generate_data(
     :interval: tuple(a,b) -- region for sampling x from uniform [a,b]^d
     :n_points: B, batch_size
     :epsilon: gaussian noise variance
+    :random: weather to sample from uniform random distr, or just sample on a uniform grid
 
     :return: (x,y) -- pair of features and targets
     """
-    # sample x from interval (x of shape Bxd)
-    # do not forget `requires_grad=False`
-    #TODO: data generator function
-    x = torch.rand(n_points, input_dim, )
-    a, b = interval
-    x = (b - a) * x + a
+    if random:
+        x = torch.rand(n_points, input_dim, )
+        a, b = interval
+        x = (b - a) * x + a
+    else:
+        x = torch.linspace(*interval, n_points)[:,None].repeat(1, input_dim)
     y = func(x) + epsilon * torch.randn(n_points, output_dim, )
     return x, y
 
 
-def generate_data_uniform(
-        input_dim: int,
-        output_dim: int,
-        func: Callable[[torch.Tensor],torch.Tensor],
-        interval:Tuple[float, float],
-        n_points: int,
-        epsilon: float
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """
-    Generates data
-    For 1D input and output prefferably!
-
-    :func: vectorised operation R^d -> R^F to be approximated
-    :interval: tuple(a,b) -- region for sampling x from uniform [a,b]^d
-    :n_points: B, batch_size
-    :epsilon: gaussian noise variance
-
-    :return: (x,y) -- pair of features and targets
-    """
-    # sample x from interval (x of shape Bxd)
-    # do not forget `requires_grad=False`
-    #TODO: data generator function
-    x = torch.linspace(*interval, n_points)[:,None]
-    # x = x[torch.randperm(n_points)]
-    y = func(x) + epsilon * torch.randn(n_points, output_dim, )
-    return x, y
+generate_data_uniform = generate_data
 
 
 def train_loop(model: EnsembleSet, n_epochs: int,
@@ -202,14 +179,16 @@ def train_loop(model: EnsembleSet, n_epochs: int,
         data_train: Tuple[torch.Tensor, torch.Tensor],
         data_test:  Tuple[torch.Tensor, torch.Tensor],
         gammas: Optional[torch.Tensor]=None,
+        tensorboard: bool=False
     ) -> Mapping[str, Any]:
     """
     Trining loop.
     :model: model to train
     :n_epochs: number of epochs
-    :optimizer: instance of optimizer from torch.optim, i.e. Adam 
+    :optimizer: instance of optimizer from torch.optim, i.e. SGD
+    :tensorboard: bool for weather to use tensorboard (default: `False`)
 
-    :return: model after training
+    :return: number of epoches passed
     """
     x_train, y_train = data_train
     x_test, y_test = data_test
@@ -220,14 +199,14 @@ def train_loop(model: EnsembleSet, n_epochs: int,
             gammas = model.choose_gamma(p)
         except NotImplementedError:
             gammas = torch.ones(model.n_ensembles, device=model.device)
-    
-    writer = SummaryWriter()
-    writer.add_scalars("p",
-                {str(i):p_ for i, p_ in enumerate(p.detach().cpu())}
-            )
-    writer.add_scalars("gamma",
-                {str(i):g for i, g in enumerate(gammas.detach().cpu())}
-            )        
+    if tensorboard:
+        writer = SummaryWriter()
+        writer.add_scalars("p",
+                    {str(i):p_ for i, p_ in enumerate(p.detach().cpu())}
+                )
+        writer.add_scalars("gamma",
+                    {str(i):g for i, g in enumerate(gammas.detach().cpu())}
+                )        
                 
     for epoch in range(n_epochs):
         model.train()
@@ -243,14 +222,16 @@ def train_loop(model: EnsembleSet, n_epochs: int,
             f_test = model(x_test)
             loss_test = model.loss(f_test, y_test) * gammas
             
-            #TODO: tensorboard
-            writer.add_scalars("loss/train",
-                        {str(i):loss for i, loss in enumerate(loss_train.detach().cpu())}
-                        , epoch)
-            writer.add_scalars("loss/test",
-                        {str(i):loss for i, loss in enumerate(loss_test.detach().cpu())}
-                        , epoch)
+            if tensorboard:
+                writer.add_scalars("loss/train",
+                            {str(i):loss for i, loss in enumerate(loss_train.detach().cpu())}
+                            , epoch)
+                writer.add_scalars("loss/test",
+                            {str(i):loss for i, loss in enumerate(loss_test.detach().cpu())}
+                            , epoch)
     
-    writer.flush()
-    writer.close()
-    return {"model": model, "optimizer": optimizer}
+    if tensorboard:
+        writer.flush()
+        writer.close()
+    return epoch+1
+    
